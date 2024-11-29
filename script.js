@@ -25,6 +25,17 @@ const labels = [
 
 let currentIndex = 0;
 
+// Shuffle the labels array
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// Shuffle labels before starting the quiz
+shuffle(labels);
+
 // Set the initial question
 document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
 
