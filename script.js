@@ -23,34 +23,45 @@ const labels = [
     { name: "Coupler", coords: [54, 342, 123, 414] }
 ];
 
-let currentIndex = 0; // Current label index
+let currentIndex = 0;
 
-// Set initial question
+// Set the initial question
 document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
 
 function checkAnswer(selectedPart) {
     const feedback = document.getElementById("feedback");
     const diagramContainer = document.getElementById("diagram-container");
+    const diagram = document.getElementById("diagram");
 
-    // Check if the answer is correct
     if (selectedPart === labels[currentIndex].name) {
         feedback.textContent = "Correct!";
         feedback.style.color = "green";
 
         // Highlight the area
         const coords = labels[currentIndex].coords;
+
+        // Calculate scaling factors for highlight positioning
+        const scaleX = diagram.clientWidth / diagram.naturalWidth;
+        const scaleY = diagram.clientHeight / diagram.naturalHeight;
+
+        // Adjust the coordinates based on the displayed image size
+        const x1 = coords[0] * scaleX;
+        const y1 = coords[1] * scaleY;
+        const x2 = coords[2] * scaleX;
+        const y2 = coords[3] * scaleY;
+
         const highlight = document.createElement("div");
         highlight.classList.add("highlight");
-        highlight.style.left = `${coords[0]}px`;
-        highlight.style.top = `${coords[1]}px`;
-        highlight.style.width = `${coords[2] - coords[0]}px`;
-        highlight.style.height = `${coords[3] - coords[1]}px`;
+        highlight.style.left = `${x1}px`;
+        highlight.style.top = `${y1}px`;
+        highlight.style.width = `${x2 - x1}px`;
+        highlight.style.height = `${y2 - y1}px`;
 
         // Add the label text
         const label = document.createElement("div");
         label.classList.add("label");
-        label.style.left = `${coords[0]}px`;
-        label.style.top = `${coords[1] - 20}px`; // Adjust label position
+        label.style.left = `${x1}px`;
+        label.style.top = `${y1 - 20}px`; // Adjust label position
         label.textContent = labels[currentIndex].name;
 
         // Append to the diagram container
@@ -71,13 +82,31 @@ function checkAnswer(selectedPart) {
 }
 
 // Attach event listeners to the diagram
-document.getElementById("diagram").addEventListener("click", (event) => {
-    const x = event.offsetX;
-    const y = event.offsetY;
+const diagram = document.getElementById("diagram");
+diagram.addEventListener("click", (event) => {
+    // Get the scaling factors
+    const scaleX = diagram.naturalWidth / diagram.clientWidth;
+    const scaleY = diagram.naturalHeight / diagram.clientHeight;
+
+    // Adjust click coordinates based on the scaling
+    const x = Math.round(event.offsetX * scaleX);
+    const y = Math.round(event.offsetY * scaleY);
+
+    // Debugging: Log click coordinates and expected area
+    console.log(`Clicked coordinates: (${x}, ${y})`);
+    console.log(`Expected area: ${labels[currentIndex].coords}`);
 
     // Check if the click matches the current area's coordinates
     const coords = labels[currentIndex].coords;
-    if (x >= coords[0] && x <= coords[2] && y >= coords[1] && y <= coords[3]) {
+
+    // Add a margin of error to account for rounding inaccuracies
+    const margin = 5; // Tolerance margin
+    if (
+        x >= coords[0] - margin &&
+        x <= coords[2] + margin &&
+        y >= coords[1] - margin &&
+        y <= coords[3] + margin
+    ) {
         checkAnswer(labels[currentIndex].name);
     } else {
         checkAnswer(null); // Incorrect click
