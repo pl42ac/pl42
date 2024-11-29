@@ -84,7 +84,7 @@ function checkAnswer(selectedPart) {
         if (currentIndex < labels.length) {
             document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
         } else {
-            document.getElementById("question").textContent = "Quiz Completed!";
+            document.getElementById("question").textContent = "You got them all!";
         }
     } else {
         feedback.textContent = "Try again!";
