@@ -1,4 +1,7 @@
+
+
 // Labels and coordinates
+
 const labels = [
     { name: "Horn", coords: [233, 100, 282, 132] },
     { name: "HVAC Unit", coords: [295, 108, 346, 161] },
@@ -23,7 +26,13 @@ const labels = [
     { name: "Coupler", coords: [54, 342, 123, 414] }
 ];
 
+
+
+
 let currentIndex = 0;
+const missedLabels = []; // Track missed labels
+let correctCount = 0;
+let incorrectCount = 0;
 
 // Shuffle the labels array
 function shuffle(array) {
@@ -37,89 +46,139 @@ function shuffle(array) {
 shuffle(labels);
 
 // Set the initial question
-document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
-
-function checkAnswer(selectedPart) {
-    const feedback = document.getElementById("feedback");
-    const diagramContainer = document.getElementById("diagram-container");
-    const diagram = document.getElementById("diagram");
-
-    if (selectedPart === labels[currentIndex].name) {
-        feedback.textContent = "Correct!";
-        feedback.style.color = "green";
-
-        // Highlight the area
-        const coords = labels[currentIndex].coords;
-
-        // Calculate scaling factors for highlight positioning
-        const scaleX = diagram.clientWidth / diagram.naturalWidth;
-        const scaleY = diagram.clientHeight / diagram.naturalHeight;
-
-        // Adjust the coordinates based on the displayed image size
-        const x1 = coords[0] * scaleX;
-        const y1 = coords[1] * scaleY;
-        const x2 = coords[2] * scaleX;
-        const y2 = coords[3] * scaleY;
-
-        const highlight = document.createElement("div");
-        highlight.classList.add("highlight");
-        highlight.style.left = `${x1}px`;
-        highlight.style.top = `${y1}px`;
-        highlight.style.width = `${x2 - x1}px`;
-        highlight.style.height = `${y2 - y1}px`;
-
-        // Add the label text
-        const label = document.createElement("div");
-        label.classList.add("label");
-        label.style.left = `${x1}px`;
-        label.style.top = `${y1 - 20}px`; // Adjust label position
-        label.textContent = labels[currentIndex].name;
-
-        // Append to the diagram container
-        diagramContainer.appendChild(highlight);
-        diagramContainer.appendChild(label);
-
-        // Move to the next question
-        currentIndex++;
-        if (currentIndex < labels.length) {
-            document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
-        } else {
-            document.getElementById("question").textContent = "You got them all!";
-        }
+function setQuestion() {
+    if (currentIndex < labels.length) {
+        document.getElementById("question").textContent = `Click on: ${labels[currentIndex].name}`;
     } else {
-        feedback.textContent = "Try again!";
-        feedback.style.color = "red";
+        endQuiz();
     }
 }
 
-// Attach event listeners to the diagram
+// Add a highlight for correct or incorrect answers
+function addHighlight(coords, container, color, label = null) {
+    const diagram = document.getElementById("diagram");
+    const scaleX = diagram.clientWidth / diagram.naturalWidth;
+    const scaleY = diagram.clientHeight / diagram.naturalHeight;
+
+    const x1 = coords[0] * scaleX;
+    const y1 = coords[1] * scaleY;
+    const x2 = coords[2] * scaleX;
+    const y2 = coords[3] * scaleY;
+
+    const highlight = document.createElement("div");
+    highlight.classList.add("highlight");
+    highlight.style.left = `${x1}px`;
+    highlight.style.top = `${y1}px`;
+    highlight.style.width = `${x2 - x1}px`;
+    highlight.style.height = `${y2 - y1}px`;
+    highlight.style.borderColor = color;
+    highlight.style.backgroundColor = color === "green" ? "rgba(0, 255, 0, 0.2)" : "rgba(255, 0, 0, 0.2)";
+
+    if (label) {
+        highlight.addEventListener("mouseover", () => {
+            label.style.display = "block";
+            label.style.left = `${x2 + 5}px`; // Position label to the right of the highlight
+            label.style.top = `${y1}px`; // Align vertically
+        });
+        highlight.addEventListener("mouseout", () => {
+            label.style.display = "none";
+        });
+    }
+
+    container.appendChild(highlight);
+    return highlight; // Return the highlight for additional controls
+}
+
+// End the quiz and display the summary
+function endQuiz() {
+    const questionElement = document.getElementById("question");
+    const feedbackElement = document.getElementById("feedback");
+    const diagramContainer = document.getElementById("diagram-container");
+
+    const score = ((correctCount / labels.length) * 100).toFixed(2); // Calculate score percentage
+
+    questionElement.textContent = "Quiz Completed!";
+    feedbackElement.innerHTML = `
+        <p>Score: ${score}%</p>
+        <p>Correct: ${correctCount}</p>
+        <p>Incorrect: ${incorrectCount}</p>
+        <p>Missed Labels:</p>
+        <ul>
+            ${missedLabels
+                .map(
+                    (label) =>
+                        `<li class="missed-label" data-label="${label.name}">${label.name}</li>`
+                )
+                .join("")}
+        </ul>
+    `;
+
+    // Highlight missed areas in red when hovered and show labels
+    const missedLabelElements = document.querySelectorAll(".missed-label");
+    missedLabelElements.forEach((element) => {
+        const label = labels.find((l) => l.name === element.dataset.label);
+        let tempHighlight = null; // Track the temporary highlight
+        let tempLabel = null; // Track the temporary label
+        element.addEventListener("mouseover", () => {
+            tempHighlight = addHighlight(label.coords, diagramContainer, "red");
+            tempLabel = document.createElement("div");
+            tempLabel.classList.add("label");
+            tempLabel.textContent = label.name;
+            tempLabel.style.left = `${tempHighlight.style.left}`;
+            tempLabel.style.top = `${parseInt(tempHighlight.style.top) + 20}px`; // Below the highlight
+            diagramContainer.appendChild(tempLabel);
+        });
+        element.addEventListener("mouseout", () => {
+            if (tempHighlight) tempHighlight.remove(); // Remove the highlight
+            if (tempLabel) tempLabel.remove(); // Remove the label
+        });
+    });
+}
+
+// Start the quiz
+setQuestion();
+
+function checkAnswer(isCorrect) {
+    const feedback = document.getElementById("feedback");
+    const diagramContainer = document.getElementById("diagram-container");
+    const currentLabel = labels[currentIndex];
+
+    if (isCorrect) {
+        feedback.textContent = "Correct!";
+        feedback.style.color = "green";
+        correctCount++;
+
+        const label = document.createElement("div");
+        label.classList.add("label");
+        label.textContent = currentLabel.name;
+        label.style.display = "none";
+
+        addHighlight(currentLabel.coords, diagramContainer, "green", label);
+        diagramContainer.appendChild(label);
+    } else {
+        feedback.textContent = "Incorrect! Moving to the next label.";
+        feedback.style.color = "red";
+        incorrectCount++;
+        missedLabels.push(currentLabel);
+    }
+
+    currentIndex++;
+    setQuestion();
+}
+
 const diagram = document.getElementById("diagram");
 diagram.addEventListener("click", (event) => {
-    // Get the scaling factors
     const scaleX = diagram.naturalWidth / diagram.clientWidth;
     const scaleY = diagram.naturalHeight / diagram.clientHeight;
 
-    // Adjust click coordinates based on the scaling
     const x = Math.round(event.offsetX * scaleX);
     const y = Math.round(event.offsetY * scaleY);
 
-    // Debugging: Log click coordinates and expected area
-    console.log(`Clicked coordinates: (${x}, ${y})`);
-    console.log(`Expected area: ${labels[currentIndex].coords}`);
-
-    // Check if the click matches the current area's coordinates
     const coords = labels[currentIndex].coords;
 
-    // Add a margin of error to account for rounding inaccuracies
-    const margin = 5; // Tolerance margin
-    if (
-        x >= coords[0] - margin &&
-        x <= coords[2] + margin &&
-        y >= coords[1] - margin &&
-        y <= coords[3] + margin
-    ) {
-        checkAnswer(labels[currentIndex].name);
-    } else {
-        checkAnswer(null); // Incorrect click
-    }
+    // Check if the click is within the bounds
+    const isCorrect =
+        x >= coords[0] && x <= coords[2] && y >= coords[1] && y <= coords[3];
+
+    checkAnswer(isCorrect);
 });
